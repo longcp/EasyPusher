@@ -15,7 +15,7 @@
 #endif
 
 // include this file content only if compiling for <=DX7 interfaces
-#if(DIRECT3D_VERSION < 0x0800)
+#if(DIRECT3D_VERSION < 0x0a00)
 
 
 #include <stdlib.h>
