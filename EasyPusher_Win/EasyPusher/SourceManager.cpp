@@ -87,13 +87,13 @@ void CSourceManager::InitSource()
 {
 	RGB_InitDraw(&m_d3dHandle);
 	int nRet = EasyPlayerManager::Init();
-	int isActivated = EasyPusher_Activate(KEY);
+	int isActivated = NuPusherRTSP_Activate(KEY);
 	switch(isActivated)
 	{
-	case EASY_ACTIVATE_INVALID_KEY:
-		printf("KEY is EASY_ACTIVATE_INVALID_KEY!\n");
+	case NU_ACTIVATE_INVALID_KEY:
+		printf("KEY is NU_ACTIVATE_INVALID_KEY!\n");
 		break;
-	case EASY_ACTIVATE_TIME_ERR:
+	case NU_ACTIVATE_TIME_ERR:
 		printf("KEY is EASY_ACTIVATE_TIME_ERR!\n");
 		break;
 	case EASY_ACTIVATE_PROCESS_NAME_LEN_ERR:
@@ -382,7 +382,7 @@ int CSourceManager::SourceManager(int _channelId, int *_channelPtr, int _frameTy
 	EASY_LOCAL_SOURCE_T *pLocalSource = (EASY_LOCAL_SOURCE_T *)_channelPtr;
 	if (NULL == pLocalSource)		return 0;
 
-	EASY_AV_Frame	frame;
+	NU_AV_Frame	frame;
 	memset(&frame, 0x00, sizeof(EASY_AV_Frame));
 	if (NULL != _frameInfo)
 	{
@@ -402,7 +402,7 @@ int CSourceManager::SourceManager(int _channelId, int *_channelPtr, int _frameTy
 		if(bIsPushing )
 		{
 			frame.u32AVFrameFlag = EASY_SDK_VIDEO_FRAME_FLAG;
-			EasyPusher_PushFrame(m_sPushInfo.pusherHandle, &frame );
+			NuPusherRTSP_PushFrame(m_sPushInfo.pusherHandle, &frame );
 
 			//推送RTMP
 			if (m_pEasyrtmp)
@@ -436,7 +436,7 @@ int CSourceManager::SourceManager(int _channelId, int *_channelPtr, int _frameTy
 		if(IsInPushing())
 		{
 			frame.u32AVFrameFlag = EASY_SDK_AUDIO_FRAME_FLAG;
-			EasyPusher_PushFrame(m_sPushInfo.pusherHandle, &frame );
+			NuPusherRTSP_PushFrame(m_sPushInfo.pusherHandle, &frame );
 			//推送RTMP
 			if (m_pEasyrtmp)
 			{
@@ -452,7 +452,7 @@ int CSourceManager::SourceManager(int _channelId, int *_channelPtr, int _frameTy
 	}
 	else if (_frameType == EASY_SDK_MEDIA_INFO_FLAG)
 	{
-		memcpy_s(&m_mediainfo, sizeof(m_mediainfo), pBuf, sizeof(EASY_MEDIA_INFO_T));
+		memcpy_s(&m_mediainfo, sizeof(m_mediainfo), pBuf, sizeof(NU_MEDIA_INFO_T));
 		if (IsInPushing())
 		{
 			//停止推流
@@ -485,11 +485,11 @@ int CSourceManager::StartDSCapture(int nCamId, int nAudioId,HWND hShowWnd,int nV
 		return 0;
 	}
 
-	if(!m_pVideoManager)
+	if (!m_pVideoManager)
 	{
 		m_pVideoManager = Create_VideoCapturer();
 	}
-	if(!m_pAudioManager)
+	if (!m_pAudioManager)
 	{
 		m_pAudioManager = Create_AudioCapturer();
 	}
@@ -504,171 +504,171 @@ int CSourceManager::StartDSCapture(int nCamId, int nAudioId,HWND hShowWnd,int nV
 	//GetDevInfoByDevIndex(nI, &DevConfigInfo);
 
 		//1. 我们来简单配置一个设备信息
-		m_sDevConfigInfo.nDeviceId = 1;
-		m_sDevConfigInfo.nVideoId = nCamId;//摄像机视频捕获ID
-		m_sDevConfigInfo.nAudioId = nAudioId;//音频捕获ID
-		m_sDevConfigInfo.VideoInfo.nFrameRate = nFps;
-		m_sDevConfigInfo.VideoInfo.nWidth = nVideoWidth;
-		m_sDevConfigInfo.VideoInfo.nHeight = nVideoHeight;
-		if (szDataype)
+	m_sDevConfigInfo.nDeviceId = 1;
+	m_sDevConfigInfo.nVideoId = nCamId;//摄像机视频捕获ID
+	m_sDevConfigInfo.nAudioId = nAudioId;//音频捕获ID
+	m_sDevConfigInfo.VideoInfo.nFrameRate = nFps;
+	m_sDevConfigInfo.VideoInfo.nWidth = nVideoWidth;
+	m_sDevConfigInfo.VideoInfo.nHeight = nVideoHeight;
+	if (szDataype)
+	{
+		strcpy_s(m_sDevConfigInfo.VideoInfo.strDataType, 64, szDataype);
+	}
+	else
+	{
+		strcpy_s(m_sDevConfigInfo.VideoInfo.strDataType, 64, "YUY2");
+	}
+	m_sDevConfigInfo.VideoInfo.nRenderType = 1;
+	m_sDevConfigInfo.VideoInfo.nPinType = 1;
+	m_sDevConfigInfo.VideoInfo.nVideoWndId = 0;
+
+	m_sDevConfigInfo.AudioInfo.nAudioBufferType = 4096;
+	m_sDevConfigInfo.AudioInfo.nBytesPerSample = 16;
+	m_sDevConfigInfo.AudioInfo.nSampleRate = nSampleRate;//44100;//
+	m_sDevConfigInfo.AudioInfo.nChannaels = nChannel;
+	m_sDevConfigInfo.AudioInfo.nPinType = 2;
+
+	//初始化Pusher结构信息
+	memset(&m_mediainfo, 0x00, sizeof(NU_MEDIA_INFO_T));
+	m_mediainfo.u32VideoCodec = NU_SDK_VIDEO_CODEC_H264;//0x1C;
+	m_mediainfo.u32VideoFps = nFps;
+	m_mediainfo.u32AudioCodec = NU_SDK_AUDIO_CODEC_AAC;
+	m_mediainfo.u32AudioChannel = nChannel;
+	m_mediainfo.u32AudioSamplerate = nSampleRate;//44100;//
+	m_mediainfo.u32AudioBitsPerSample = 16;
+
+	//初始化RGB24->I420色彩空间转换表，便于转换时查询，提高效率
+	InitLookupTable();
+	//申请编码的内存空间，用作编码后数据的调整
+	if (!m_EncoderBuffer)
+	{
+		m_EncoderBuffer = new char[1920 * 1080];
+	}
+
+	if (m_bUseFFEncoder)
+	{
+		//FFEncoder -- Init start
+		int	width = nVideoWidth;
+		int height = nVideoHeight;
+		int fps = nFps;
+		int gop = 30;
+		int bitrate = nBitRate * 1024;//512000; 
+		int	intputformat = 0;		//3:rgb24  0:yv12
+		CString strDataType = _T("");
+		strDataType = m_sDevConfigInfo.VideoInfo.strDataType;
+		if (strDataType == _T("RGB24"))
 		{
-			strcpy_s(m_sDevConfigInfo.VideoInfo.strDataType, 64, szDataype);
+			intputformat = 3;
 		}
 		else
 		{
-			strcpy_s(m_sDevConfigInfo.VideoInfo.strDataType, 64, "YUY2");
-		}
-		m_sDevConfigInfo.VideoInfo.nRenderType = 1;
-		m_sDevConfigInfo.VideoInfo.nPinType = 1;
-		m_sDevConfigInfo.VideoInfo.nVideoWndId = 0;
-
-		m_sDevConfigInfo.AudioInfo.nAudioBufferType = 4096;
-		m_sDevConfigInfo.AudioInfo.nBytesPerSample = 16;
-		m_sDevConfigInfo.AudioInfo.nSampleRate = nSampleRate;//44100;//
-		m_sDevConfigInfo.AudioInfo.nChannaels = nChannel;
-		m_sDevConfigInfo.AudioInfo.nPinType = 2;
-
-		//初始化Pusher结构信息
-		memset(&m_mediainfo, 0x00, sizeof(EASY_MEDIA_INFO_T));
-		m_mediainfo.u32VideoCodec =  EASY_SDK_VIDEO_CODEC_H264;//0x1C;
-		m_mediainfo.u32VideoFps = nFps;
-		m_mediainfo.u32AudioCodec = EASY_SDK_AUDIO_CODEC_AAC;
-		m_mediainfo.u32AudioChannel = nChannel;
-		m_mediainfo.u32AudioSamplerate = nSampleRate;//44100;//
-		m_mediainfo.u32AudioBitsPerSample = 16;
-
-		//初始化RGB24->I420色彩空间转换表，便于转换时查询，提高效率
-		InitLookupTable();
-		//申请编码的内存空间，用作编码后数据的调整
-		if (!m_EncoderBuffer)
-		{
-			m_EncoderBuffer = new char[1920*1080];	
-		}	
-
-		if (m_bUseFFEncoder)
-		{
-			//FFEncoder -- Init start
-			int	width = nVideoWidth;
-			int height = nVideoHeight;
-			int fps = nFps;
-			int gop = 30;
-			int bitrate = nBitRate*1024;//512000; 
-			int	intputformat = 0;		//3:rgb24  0:yv12
-			CString strDataType = _T("");
-			strDataType = m_sDevConfigInfo.VideoInfo.strDataType;
-			if (strDataType == _T("RGB24"))
-			{
-				intputformat = 3;	
-			} 
-			else
-			{
-				intputformat = 0;	
-			}
-
-			m_nFrameNum = 0;
-			//初始化H264编码器
-			FFE_Init(&m_hFfeVideoHandle);	//初始化
-			FFE_SetVideoEncodeParam(m_hFfeVideoHandle, ENCODER_H264, width, height, fps, gop, bitrate, intputformat);		//设置编码参数
-			//初始化AAC编码器
-			AAC_Init(&m_hFfeAudioHandle, nSampleRate/*44100*/, nChannel);
-			//FFEncoder -- Init end
-		} 
-		else
-		{
-			//x264+faac Encoder --- Init Start
-			if(!m_pEncConfigInfo)
-				m_pEncConfigInfo = new Encoder_Config_Info;
-
-			m_AACEncoderManager.Init(nSampleRate, nChannel);
-			m_pEncConfigInfo->nScrVideoWidth = nVideoWidth;
-			m_pEncConfigInfo->nScrVideoHeight = nVideoHeight;
-			m_pEncConfigInfo->nFps = nFps;
-			m_pEncConfigInfo->nMainKeyFrame = 30;
-			m_pEncConfigInfo->nMainBitRate = nBitRate;
-			m_pEncConfigInfo->nMainEncLevel = 1;
-			m_pEncConfigInfo->nMainEncQuality = 20;
-			m_pEncConfigInfo->nMainUseQuality = 0;
-
-			m_H264EncoderManager.Init(0,m_pEncConfigInfo->nScrVideoWidth,
-				m_pEncConfigInfo->nScrVideoHeight,m_pEncConfigInfo->nFps,m_pEncConfigInfo->nMainKeyFrame,
-				m_pEncConfigInfo->nMainBitRate,m_pEncConfigInfo->nMainEncLevel,
-				m_pEncConfigInfo->nMainEncQuality,m_pEncConfigInfo->nMainUseQuality);
-
-			byte  sps[100];
-			byte  pps[100];
-			long spslen=0;
-			long ppslen=0;
-			m_H264EncoderManager.GetSPSAndPPS(0,sps,spslen,pps,ppslen);
-			memcpy(m_sps, sps,100) ;
-			memcpy(m_pps, pps,100) ;
-			m_spslen = spslen;
-			m_ppslen = ppslen;
-			//x264+faac Encoder --- Init End
+			intputformat = 0;
 		}
 
-		//视频可用
-		if (m_sDevConfigInfo.nVideoId >= 0)
+		m_nFrameNum = 0;
+		//初始化H264编码器
+		FFE_Init(&m_hFfeVideoHandle);	//初始化
+		FFE_SetVideoEncodeParam(m_hFfeVideoHandle, ENCODER_H264, width, height, fps, gop, bitrate, intputformat);		//设置编码参数
+		//初始化AAC编码器
+		AAC_Init(&m_hFfeAudioHandle, nSampleRate/*44100*/, nChannel);
+		//FFEncoder -- Init end
+	}
+	else
+	{
+		//x264+faac Encoder --- Init Start
+		if (!m_pEncConfigInfo)
+			m_pEncConfigInfo = new Encoder_Config_Info;
+
+		m_AACEncoderManager.Init(nSampleRate, nChannel);
+		m_pEncConfigInfo->nScrVideoWidth = nVideoWidth;
+		m_pEncConfigInfo->nScrVideoHeight = nVideoHeight;
+		m_pEncConfigInfo->nFps = nFps;
+		m_pEncConfigInfo->nMainKeyFrame = 30;
+		m_pEncConfigInfo->nMainBitRate = nBitRate;
+		m_pEncConfigInfo->nMainEncLevel = 1;
+		m_pEncConfigInfo->nMainEncQuality = 20;
+		m_pEncConfigInfo->nMainUseQuality = 0;
+
+		m_H264EncoderManager.Init(0, m_pEncConfigInfo->nScrVideoWidth,
+			m_pEncConfigInfo->nScrVideoHeight, m_pEncConfigInfo->nFps, m_pEncConfigInfo->nMainKeyFrame,
+			m_pEncConfigInfo->nMainBitRate, m_pEncConfigInfo->nMainEncLevel,
+			m_pEncConfigInfo->nMainEncQuality, m_pEncConfigInfo->nMainUseQuality);
+
+		byte  sps[100];
+		byte  pps[100];
+		long spslen = 0;
+		long ppslen = 0;
+		m_H264EncoderManager.GetSPSAndPPS(0, sps, spslen, pps, ppslen);
+		memcpy(m_sps, sps, 100);
+		memcpy(m_pps, pps, 100);
+		m_spslen = spslen;
+		m_ppslen = ppslen;
+		//x264+faac Encoder --- Init End
+	}
+
+	//视频可用
+	if (m_sDevConfigInfo.nVideoId >= 0)
+	{
+		HWND hWnd = hShowWnd;
+		// 2.设置视频获取显示参数
+		m_pVideoManager->SetVideoCaptureData(0, m_sDevConfigInfo.nVideoId,
+			hWnd,
+			m_sDevConfigInfo.VideoInfo.nFrameRate, m_sDevConfigInfo.VideoInfo.nWidth,
+			m_sDevConfigInfo.VideoInfo.nHeight, m_sDevConfigInfo.VideoInfo.strDataType,
+			m_sDevConfigInfo.VideoInfo.nRenderType, m_sDevConfigInfo.VideoInfo.nPinType, 1, bUseThread);
+
+		m_pVideoManager->SetDShowCaptureCallback((RealDataCallback)(CSourceManager::RealDataCallbackFunc), (void*)/*s_pSourceManager*/this);
+
+		// 3.创建获取视频的图像
+		nRet = m_pVideoManager->CreateCaptureGraph();
+		if (nRet <= 0)
 		{
-			HWND hWnd = hShowWnd;		
-			// 2.设置视频获取显示参数
-			m_pVideoManager->SetVideoCaptureData(0, m_sDevConfigInfo.nVideoId,
-				hWnd,
-				m_sDevConfigInfo.VideoInfo.nFrameRate,  m_sDevConfigInfo.VideoInfo.nWidth,
-				m_sDevConfigInfo.VideoInfo.nHeight,     m_sDevConfigInfo.VideoInfo.strDataType, 
-				m_sDevConfigInfo.VideoInfo.nRenderType, m_sDevConfigInfo.VideoInfo.nPinType, 1, bUseThread);
-
-			m_pVideoManager->SetDShowCaptureCallback((RealDataCallback)(CSourceManager::RealDataCallbackFunc), (void*)/*s_pSourceManager*/this);
-
-			// 3.创建获取视频的图像
-			nRet =m_pVideoManager->CreateCaptureGraph();
-			if(nRet<=0)
-			{
-				m_pVideoManager->SetCaptureVideoErr(nRet);
-				Release_VideoCapturer(m_pVideoManager);
-				m_pVideoManager = NULL;
-
-				strTemp.Format(_T("Video[%d]--创建基本链路失败--In StartDSCapture()."), nCamId);
-				LogErr(strTemp);
-				return -1;
-			}
-			nRet = m_pVideoManager->BulidPrivewGraph();
-			if(nRet<0)
-			{
-				Release_VideoCapturer(m_pVideoManager);
-				m_pVideoManager = NULL;
-
-				strTemp.Format(_T("Video[%d]--连接链路失败--In StartDSCapture()."), nCamId);			
-				LogErr(strTemp);
-				return -1;
-			}
-			else
-			{
-				if (nRet == 2)
-				{
-					strTemp.Format(_T("Video[%d]--该设备不支持内部回显，将采用外部回显模式！(可能是因为没有可以进行绘制的表面)--In StartDSCapture()."), nCamId);			
-					LogErr(strTemp);
-				}
-				m_pVideoManager->BegineCaptureThread();
-			}
-		}
-		else
-		{
-			Release_VideoCapturer(m_pVideoManager)	;
+			m_pVideoManager->SetCaptureVideoErr(nRet);
+			Release_VideoCapturer(m_pVideoManager);
 			m_pVideoManager = NULL;
-			LogErr(_T("当前视频设备不可用!"));
+
+			strTemp.Format(_T("Video[%d]--创建基本链路失败--In StartDSCapture()."), nCamId);
+			LogErr(strTemp);
+			return -1;
 		}
+		nRet = m_pVideoManager->BulidPrivewGraph();
+		if (nRet < 0)
+		{
+			Release_VideoCapturer(m_pVideoManager);
+			m_pVideoManager = NULL;
+
+			strTemp.Format(_T("Video[%d]--连接链路失败--In StartDSCapture()."), nCamId);
+			LogErr(strTemp);
+			return -1;
+		}
+		else
+		{
+			if (nRet == 2)
+			{
+				strTemp.Format(_T("Video[%d]--该设备不支持内部回显，将采用外部回显模式！(可能是因为没有可以进行绘制的表面)--In StartDSCapture()."), nCamId);
+				LogErr(strTemp);
+			}
+			m_pVideoManager->BegineCaptureThread();
+		}
+	}
+	else
+	{
+		Release_VideoCapturer(m_pVideoManager);
+		m_pVideoManager = NULL;
+		LogErr(_T("当前视频设备不可用!"));
+	}
 
 	//音频可用
 	if (m_sDevConfigInfo.nAudioId >= 0)
 	{
-		m_pAudioManager->SetAudioCaptureData(m_sDevConfigInfo.nAudioId, m_sDevConfigInfo.AudioInfo.nChannaels, 
-			m_sDevConfigInfo.AudioInfo.nBytesPerSample,  m_sDevConfigInfo.AudioInfo.nSampleRate, 
+		m_pAudioManager->SetAudioCaptureData(m_sDevConfigInfo.nAudioId, m_sDevConfigInfo.AudioInfo.nChannaels,
+			m_sDevConfigInfo.AudioInfo.nBytesPerSample, m_sDevConfigInfo.AudioInfo.nSampleRate,
 			m_sDevConfigInfo.AudioInfo.nAudioBufferType, m_sDevConfigInfo.AudioInfo.nPinType, 2, bUseThread);
 
 		m_pAudioManager->SetDShowCaptureCallback((RealDataCallback)(CSourceManager::RealDataCallbackFunc), (void*)this);
 
-		nRet =m_pAudioManager->CreateCaptureGraph();
-		if(nRet<=0)
+		nRet = m_pAudioManager->CreateCaptureGraph();
+		if (nRet <= 0)
 		{
 			strTemp.Format(_T("Audio[%d]--创建基本链路失败--In StartDSCapture()."), nAudioId);
 			LogErr(strTemp);
@@ -680,7 +680,7 @@ int CSourceManager::StartDSCapture(int nCamId, int nAudioId,HWND hShowWnd,int nV
 		if (m_pAudioManager)
 		{
 			nRet = m_pAudioManager->BulidCaptureGraph();
-			if(nRet<0)
+			if (nRet < 0)
 			{
 				strTemp.Format(_T("Audio[%d]--连接链路失败--In StartDSCapture()."), nAudioId);
 				LogErr(strTemp);
@@ -691,10 +691,10 @@ int CSourceManager::StartDSCapture(int nCamId, int nAudioId,HWND hShowWnd,int nV
 			}
 			else
 			{
-				m_pAudioManager->BegineCaptureThread();	
+				m_pAudioManager->BegineCaptureThread();
 			}
 		}
-	}	
+	}
 	else
 	{
 		LogErr(_T("当前音频设备不可用!"));
@@ -712,9 +712,25 @@ int CSourceManager::InitFileCapture(char* sFilePath, int nStartTime, int nEndTim
 	}
 	m_pEasyFileCapture->InitFileCapture(sFilePath, nStartTime, nEndTime,  bAutoLoop);
 
+    EASY_MEDIA_INFO_T mediainfo;
 	//初始化Pusher结构信息
- 	memset(&m_mediainfo, 0x00, sizeof(EASY_MEDIA_INFO_T));
-	m_pEasyFileCapture->GetMediaInfo(m_mediainfo);
+ 	memset(&m_mediainfo, 0x00, sizeof(NU_MEDIA_INFO_T));
+    memset(&mediainfo, 0x00, sizeof(EASY_MEDIA_INFO_T));
+	m_pEasyFileCapture->GetMediaInfo(mediainfo);
+    m_mediainfo.u32VideoCodec = mediainfo.u32VideoCodec;
+    m_mediainfo.u32VideoFps = mediainfo.u32VideoCodec;
+    m_mediainfo.u32AudioCodec = mediainfo.u32VideoCodec;
+    m_mediainfo.u32AudioSamplerate = mediainfo.u32VideoCodec;
+    m_mediainfo.u32AudioChannel = mediainfo.u32VideoCodec;
+    m_mediainfo.u32AudioBitsPerSample = mediainfo.u32VideoCodec;
+    m_mediainfo.u32VpsLength = mediainfo.u32VideoCodec;
+    m_mediainfo.u32SpsLength = mediainfo.u32VideoCodec;
+    m_mediainfo.u32PpsLength = mediainfo.u32VideoCodec;
+    m_mediainfo.u32SeiLength = mediainfo.u32VideoCodec;
+    memcpy(m_mediainfo.u8Vps, mediainfo.u8Vps, sizeof(mediainfo.u8Vps));
+    memcpy(m_mediainfo.u8Sps, mediainfo.u8Sps, sizeof(mediainfo.u8Sps));
+    memcpy(m_mediainfo.u8Pps, mediainfo.u8Pps, sizeof(mediainfo.u8Pps));
+    memcpy(m_mediainfo.u8Sei, mediainfo.u8Sei, sizeof(mediainfo.u8Sei));
 
 // 	m_mediainfo.u32VideoCodec =  EASY_SDK_VIDEO_CODEC_H264;//0x1C;
 // 	m_mediainfo.u32VideoFps = tempMediaInfo.nFps;
@@ -852,14 +868,15 @@ void CSourceManager::StopCapture()
 	m_bDSCapture = FALSE;
 }
 
-int __EasyPusher_Callback(int _id, EASY_PUSH_STATE_T _state, EASY_AV_Frame *_frame, void *_userptr)
+int __EasyPusher_Callback(int _id, NU_PUSH_STATE_T _state, NU_AV_Frame *_frame, void *_userptr)
 {
-	if (_state == EASY_PUSH_STATE_CONNECTING)               TRACE("Connecting...\n");
-	else if (_state == EASY_PUSH_STATE_CONNECTED)           TRACE("Connected\n");
-	else if (_state == EASY_PUSH_STATE_CONNECT_FAILED)      TRACE("Connect failed\n");
-	else if (_state == EASY_PUSH_STATE_CONNECT_ABORT)       TRACE("Connect abort\n");
-	else if (_state == EASY_PUSH_STATE_PUSHING)             TRACE("P->");
-	else if (_state == EASY_PUSH_STATE_DISCONNECTED)        TRACE("Disconnect.\n");
+	if (_state == NU_PUSH_STATE_CONNECTING)               printf("Connecting...\n");
+	else if (_state == NU_PUSH_STATE_CONNECTED)           printf("Connected\n");
+	else if (_state == NU_PUSH_STATE_CONNECT_FAILED)      printf("Connect failed\n");
+	else if (_state == NU_PUSH_STATE_CONNECT_ABORT)       printf("Connect abort\n");
+	else if (_state == NU_PUSH_STATE_PUSHING)             printf("P->");
+	else if (_state == NU_PUSH_STATE_DISCONNECTED)        printf("Disconnect.\n");
+    else                                                  printf("Error");
 
 	return 0;
 }
@@ -867,16 +884,16 @@ int __EasyPusher_Callback(int _id, EASY_PUSH_STATE_T _state, EASY_AV_Frame *_fra
 //开始推流
 int CSourceManager::StartPush(char* ServerIp, int nPushPort, char* sPushName, int nPushBufSize, bool bPushRtmp)
 {
-	m_sPushInfo.pusherHandle = EasyPusher_Create();
+	m_sPushInfo.pusherHandle = NuPusherRTSP_Create();
 	strcpy(m_sPushInfo.pushServerAddr,  ServerIp);
 	m_sPushInfo.pushServerPort = nPushPort;
 	strcpy(m_sPushInfo.sdpName, sPushName);
 	Easy_U32 nRet = 0;
 	if (NULL != m_sPushInfo.pusherHandle )
 	{
-		EasyPusher_SetEventCallback(m_sPushInfo.pusherHandle, __EasyPusher_Callback, 0, NULL);
-		nRet = EasyPusher_StartStream(m_sPushInfo.pusherHandle , 
-			ServerIp, nPushPort, sPushName, EASY_RTP_OVER_TCP, "", "", (EASY_MEDIA_INFO_T*)&m_mediainfo, nPushBufSize, 0);//512-2048
+		NuPusherRTSP_SetEventCallback(m_sPushInfo.pusherHandle, __EasyPusher_Callback, 0, NULL);
+		nRet = NuPusherRTSP_StartStream(m_sPushInfo.pusherHandle ,
+			ServerIp, nPushPort, sPushName, EASY_RTP_OVER_TCP, "", "", (NU_MEDIA_INFO_T*)&m_mediainfo, nPushBufSize, 0);//512-2048
 	}	
 	else
 	{
@@ -913,8 +930,8 @@ void CSourceManager::StopPush()
 	//Close Pusher
 	if (NULL != m_sPushInfo.pusherHandle)
 	{
-		EasyPusher_StopStream(m_sPushInfo.pusherHandle);
-		EasyPusher_Release(m_sPushInfo.pusherHandle);
+		NuPusherRTSP_StopStream(m_sPushInfo.pusherHandle);
+		NuPusherRTSP_Release(m_sPushInfo.pusherHandle);
 		m_sPushInfo.pusherHandle = NULL;
 	}
 	if (m_pEasyrtmp)

@@ -35,6 +35,9 @@
 #include "./EasyEncoder/H264EncoderManager.h"
 #include "./EasyEncoder/EasyRtmp.h"
 
+#include "nupusher_rtsp_api.h"
+#include "nutypes.h"
+
 extern "C"
 {
 //MP4Creater Package MP4
@@ -254,7 +257,7 @@ private:
 
 	//本地Dshow捕获参数设置
 	DEVICE_CONFIG_INFO m_sDevConfigInfo;
-	EASY_MEDIA_INFO_T   m_mediainfo;
+	NU_MEDIA_INFO_T   m_mediainfo;
 	EASY_LOCAL_SOURCE_T m_sSourceInfo;
 	EASY_LOCAL_SOURCE_T m_sPushInfo;
 	EASY_LOCAL_SOURCE_T m_sPlayInfo;

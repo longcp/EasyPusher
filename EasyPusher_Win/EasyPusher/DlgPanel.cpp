@@ -174,7 +174,7 @@ BOOL CDlgPanel::OnInitDialog()
 		//	pSouceCombo->AddString(_T("网络Onvif流采集"));
 		m_pCmbSourceType->AddString(_T("屏幕采集"));
 		m_pCmbSourceType->AddString(_T("文件采集"));
-		m_pCmbSourceType->SetCurSel(m_sSourceInfo.nSourceType);
+		m_pCmbSourceType->SetCurSel(0);
 	}
 	if (m_pCmbScreenMode)
 	{		

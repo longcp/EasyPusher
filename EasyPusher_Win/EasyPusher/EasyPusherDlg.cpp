@@ -207,12 +207,12 @@ BOOL CEasyPusherDlg::OnInitDialog()
 		pRtspURL->SetWindowTextW(TEXT("rtsp://cloud.easydarwin.org:554/stream.sdp"));
 	}
 
-	m_edtIp.SetWindowTextW(TEXT("cloud.easydarwin.org"));
+	m_edtIp.SetWindowTextW(TEXT("192.168.22.124"));
 
 	CEdit* pPort = (CEdit*)GetDlgItem(IDC_EDIT_SERVER_PORT);
 	if (pPort)
 	{
-		pPort->SetWindowTextW(TEXT("554"));
+		pPort->SetWindowTextW(TEXT("10554"));
 	}
 	CEdit* pName = (CEdit*)GetDlgItem(IDC_EDIT_PUSH_NAME);
 	if (pName)
