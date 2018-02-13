@@ -870,13 +870,13 @@ void CSourceManager::StopCapture()
 
 int __EasyPusher_Callback(int _id, NU_PUSH_STATE_T _state, NU_AV_Frame *_frame, void *_userptr)
 {
-	if (_state == NU_PUSH_STATE_CONNECTING)               printf("Connecting...\n");
-	else if (_state == NU_PUSH_STATE_CONNECTED)           printf("Connected\n");
-	else if (_state == NU_PUSH_STATE_CONNECT_FAILED)      printf("Connect failed\n");
-	else if (_state == NU_PUSH_STATE_CONNECT_ABORT)       printf("Connect abort\n");
-	else if (_state == NU_PUSH_STATE_PUSHING)             printf("P->");
-	else if (_state == NU_PUSH_STATE_DISCONNECTED)        printf("Disconnect.\n");
-    else                                                  printf("Error");
+	if (_state == NU_PUSH_STATE_CONNECTING)               printf("!!! Connecting...\n");
+	else if (_state == NU_PUSH_STATE_CONNECTED)           printf("!!! Connected\n");
+	else if (_state == NU_PUSH_STATE_CONNECT_FAILED)      printf("!!! Connect failed\n");
+	else if (_state == NU_PUSH_STATE_CONNECT_ABORT)       printf("!!! Connect abort\n");
+	else if (_state == NU_PUSH_STATE_PUSHING)             printf("!!! P->");
+	else if (_state == NU_PUSH_STATE_DISCONNECTED)        printf("!!! Disconnect.\n");
+    else                                                  printf("!!! Error");
 
 	return 0;
 }

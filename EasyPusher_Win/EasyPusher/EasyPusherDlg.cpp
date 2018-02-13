@@ -212,7 +212,7 @@ BOOL CEasyPusherDlg::OnInitDialog()
 	CEdit* pPort = (CEdit*)GetDlgItem(IDC_EDIT_SERVER_PORT);
 	if (pPort)
 	{
-		pPort->SetWindowTextW(TEXT("10554"));
+		pPort->SetWindowTextW(TEXT("11554"));
 	}
 	CEdit* pName = (CEdit*)GetDlgItem(IDC_EDIT_PUSH_NAME);
 	if (pName)
